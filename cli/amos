@@ -1,0 +1,23 @@
+#!/usr/bin/env node
+const yargs = require('yargs/yargs')
+const { hideBin } = require('yargs/helpers')
+const argv = yargs(hideBin(process.argv)).argv
+
+const {
+  Consumer,
+  Storage,
+} = require(`../src`)
+
+;(() => {
+  const serviceConfigs = [{
+    name: `twitter`,
+    url: `http://localhost:3000`,
+    pullInterval: 10000,
+    authentication: argv.auth
+  }]
+
+  const storage = new Storage.FS(argv.storage)
+  const consumer = new Consumer(storage, serviceConfigs)
+
+  consumer.start()
+})()
