@@ -1,3 +1,4 @@
+const { createServer } = require(`./server`)
 const transformer = require(`@takeamos/transformer`)
 const Storage = require(`./storage`)
 const fetch = require(`node-fetch`)
@@ -38,6 +39,7 @@ class Consumer {
     this.serviceConfigs = serviceConfigs
 
     this.storage = storage
+    this.server = createServer(storage)
   }
 
   async start(service) {
@@ -60,14 +62,20 @@ class Consumer {
             latestId,
           } = serviceConfig
 
+          console.log("LATESTID:", latestId)
           debug(`fetching ${name} data`)
-          const pulledRes = await fetch(`${url}/api/pull?latest=${latestId}`, {
+          const pulledRes = await fetch(`${url}/api/pull?latestId=${latestId}`, {
             headers: {
               [`Authorization`]: `API ${authentication}`,
             }
           })
 
           let { entities } = await pulledRes.json()
+
+          console.log("ENTITIES:", entities)
+          if (entities.length === 0) {
+            return
+          }
 
           // TODO Write to meta file
           serviceConfig.latestId = entities[0].id_str

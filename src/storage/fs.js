@@ -16,7 +16,9 @@ class FsStorage {
   async read(ref, opts) {
     const { id } = opts
 
-    return promisify(fs.readFile)(`${this.dir}/${ref}/${id}`)
+    const file = await promisify(fs.readFile)(`${this.dir}/${ref}/${id}`)
+
+    return JSON.parse(file.toString())
   }
 
   async write(ref, records, opts) {
@@ -35,30 +37,36 @@ class FsStorage {
     }
 
     const promises = records.map((record) => {
-      console.debug(`writing ${baseDir}/${record.about.identifier}`)
 
-      return promisify(fs.writeFile)(`${baseDir}/${record.about.identifier}`, JSON.stringify(record), { flag: `wx+` })
+      const path = `${baseDir}/${record.about.identifier}`;
+      return promisify(fs.writeFile)(path, JSON.stringify(record), { flag: `wx+` })
+        .then(() => {
+          console.debug(`wrote ${path}`)
+        })
+        .catch((e) => {
+          console.debug(`failed writing ${path} due to ${e.message}`)
+        })
     })
 
     return Promise.allSettled(promises)
   }
 
   async feed(ref, skip) {
-    const files = await promisify(fs.readdir)(`${this.dir}/${ref}`)
+    const dirPath = `${this.dir}/${ref}`
 
-    files[Symbol.asyncIterator] = async function*() {
-      for(let i = 0; i < files.length; i++) {
-        const filePath = files[i]
-        const fileContents = await promisify(fs.readFile)(filePath)
+    let files = await promisify(fs.readdir)(dirPath)
 
-        yield {
-          value: fileContents,
-          done: false
-        }
-      }
+    files = files.slice(0, 100)
 
-      yield { done: true }
+    const entities = []
+    for(let i = 0; i < files.length; i++) {
+      const filePath = files[i]
+      const fileContents = await promisify(fs.readFile)(`${dirPath}/${filePath}`)
+
+      entities.push(JSON.parse(fileContents.toString()))
     }
+
+    return entities
   }
 }
 

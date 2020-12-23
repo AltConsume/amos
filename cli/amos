@@ -1,6 +1,11 @@
 #!/usr/bin/env node
-const yargs = require('yargs/yargs')
+
+const { promisify } = require('util')
 const { hideBin } = require('yargs/helpers')
+const { resolve } = require('path')
+const yargs = require('yargs/yargs')
+const fs = require('fs')
+
 const argv = yargs(hideBin(process.argv)).argv
 
 const {
@@ -8,13 +13,11 @@ const {
   Storage,
 } = require(`../src`)
 
-;(() => {
-  const serviceConfigs = [{
-    name: `twitter`,
-    url: `http://localhost:3000`,
-    pullInterval: 10000,
-    authentication: argv.auth
-  }]
+;(async () => {
+  const configPath = resolve(argv.config || [ __dirname, 'config.json' ])
+
+  let serviceConfigs = await promisify(fs.readFile)(configPath)
+  serviceConfigs = JSON.parse(serviceConfigs.toString())
 
   const storage = new Storage.FS(argv.storage)
   const consumer = new Consumer(storage, serviceConfigs)
