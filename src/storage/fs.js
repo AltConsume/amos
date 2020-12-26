@@ -1,4 +1,5 @@
 const { promisify } = require(`util`)
+const { resolve } = require(`path`)
 const fs = require(`fs`)
 
 class FsStorage {
@@ -16,7 +17,9 @@ class FsStorage {
   async read(ref, opts) {
     const { id } = opts
 
-    const file = await promisify(fs.readFile)(`${this.dir}/${ref}/${id}`)
+    const path = resolve(this.dir, ref, id)
+
+    const file = await promisify(fs.readFile)(path)
 
     return JSON.parse(file.toString())
   }
@@ -28,7 +31,7 @@ class FsStorage {
       records = [ records ]
     }
 
-    const baseDir = `${this.dir}/${ref}`
+    const baseDir = resolve(this.dir, ref)
 
     try {
       await promisify(fs.mkdir)(baseDir)
@@ -37,8 +40,12 @@ class FsStorage {
     }
 
     const promises = records.map((record) => {
+      if (!record.about || !record.about.identifier) {
+        return Promise.resolve()
+      }
 
-      const path = `${baseDir}/${record.about.identifier}`;
+      const path = resolve(baseDir, record.about.identifier);
+
       return promisify(fs.writeFile)(path, JSON.stringify(record), { flag: `wx+` })
         .then(() => {
           console.debug(`wrote ${path}`)

@@ -43,7 +43,6 @@ class Consumer {
   }
 
   async start(service) {
-    debug(`starting ${service || `all services`}`)
 
     const startService = (serviceConfig) => {
       debug(`starting ${serviceConfig.name} service`)
@@ -59,39 +58,68 @@ class Consumer {
             url,
             authentication,
             name,
+            scope,
             latestId,
           } = serviceConfig
 
-          console.log("LATESTID:", latestId)
-          debug(`fetching ${name} data`)
-          const pulledRes = await fetch(`${url}/api/pull?latestId=${latestId}`, {
+          debug(`fetching ${name} data for scope ${scope}`)
+          const pulledRes = await fetch(`${url}/api/pull?latestId=${latestId}&scope=${scope}`, {
             headers: {
               [`Authorization`]: `API ${authentication}`,
             }
           })
 
+          if (pulledRes.status !== 200) {
+            try {
+              const error = await pulledRes.text()
+
+              console.error(`Failed to fetch ${name} data for scope ${scope}: ${error || `no error found`}`)
+
+              return
+            } catch (error) {
+              console.error(`Error while showing error for ${name} for scope ${scope}: ${error}`)
+
+              return
+            }
+          }
+
+          debug(`got a response back from ${name} for scope ${scope}`)
+
           let { entities } = await pulledRes.json()
 
-          console.log("ENTITIES:", entities)
           if (entities.length === 0) {
+            console.warn(`Could not find entities for ${name} for scope ${scope}`)
+
             return
           }
 
           // TODO Write to meta file
-          serviceConfig.latestId = entities[0].id_str
+          serviceConfig.latestId = entities[0].id
+
+          debug(`latest id for ${name} for scope ${scope}: ${serviceConfig.latestId}`)
 
           entities = entities.map((entity) => {
+            debug(`transforming ${entity.id} for ${name} for scope ${scope}`)
+
             return transformer(entity, name)
           })
 
-          await this.storage.write(name, entities, fsConfig)
+          debug(`writing ${entities.length} entities for ${name} for scope ${scope}`)
+
+          let _name = scope ? `${name}/${scope}` : name
+
+          await this.storage.write(_name, entities, fsConfig)
         }
-      })(service, serviceConfig), serviceConfig.pullInterval);
+      })(service, serviceConfig), serviceConfig.pullSeconds * 1000);
     }
 
     if (!service) {
+      debug(`trying to start all services present in serviceConfigs (${this.serviceConfigs.length} services definitions found)`)
+
       return this.serviceConfigs.map(startService)
     }
+
+    debug(`trying to start ${service} service`)
 
     const serviceConfig = this.serviceConfigs.find(({ name }) => name === service)
 
@@ -99,6 +127,7 @@ class Consumer {
       throw new Error(`Could not find ${service} as a configured service.`)
     }
 
+    debug(`found service config for ${name}`)
     return startService(config)
   }
 
