@@ -1,12 +1,20 @@
-const asyncIteratorToStream = require(`async-iterator-to-stream`)
+const { promisify } = require(`util`)
 const express = require(`express`)
+const redis = require(`redis`)
 
-const { PORT } = process.env
+const {
+  PORT,
+  REDIS_URL,
+} = process.env
+
+const redisClient = redis.createClient(REDIS_URL)
+
+const hgetAsync = promisify(redisClient.hget).bind(redisClient)
 
 const createServer = (storage) => {
   const app = express()
 
-  app.get(`/:service/feed/:id`, async (req, res, next) => {
+  app.get(`/api/:service/feed/:id`, async (req, res, next) => {
     const { service, id } = req.params
 
     const entity = await storage.read(service, { id })
@@ -14,17 +22,23 @@ const createServer = (storage) => {
     return res.json(entity)
   })
 
-  app.get(`/:service/feed`, async (req, res, next) => {
+  app.get(`/api/:service/feed`, async (req, res, next) => {
     const { service } = req.params
 
-    const feed = await storage.feed(service)
+    const stringifiedIdentifiers = await hgetAsync(`recommendations`, service)
 
-    return res.json({ feed })
+    const parsedIdentifiers = JSON.parse(stringifiedIdentifiers)
+
+    const entities = await storage.feed(service, parsedIdentifiers)
+
+    return res.json(entities)
   })
 
 
   const port = PORT || 3001
+
   console.log(`Started server on ${port}`)
+
   app.listen(port)
 }
 

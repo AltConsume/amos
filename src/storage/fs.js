@@ -14,9 +14,7 @@ class FsStorage {
     this.dir = baseDir
   }
 
-  async read(ref, opts) {
-    const { id } = opts
-
+  async read(ref, id) {
     const path = resolve(this.dir, ref, id)
 
     const file = await promisify(fs.readFile)(path)
