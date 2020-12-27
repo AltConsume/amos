@@ -1,40 +1,12 @@
 const { createServer } = require(`./server`)
-const transformer = require(`@takeamos/transformer`)
+const { parse } = require(`@takeamos/models`)
 const Storage = require(`./storage`)
 const fetch = require(`node-fetch`)
-const debug = require(`debug`)(`amos:consumer`)
+const debug = require(`debug`)(`amos:deck`)
 
-const checkForHydration = async (entity, serviceConfig) => {
-  const {
-    url,
-    name,
-    authentication
-  } = serviceConfig
-
-  const hydrate = async (id) => {
-    const hydratedRes = await fetch(`${url}/api/hydrate?id=${id}`, {
-      headers: {
-        [`Authorization`]: `API ${authentication}`,
-      }
-    })
-
-   return hydratedRes.json()
-  }
-
-  if (entity.truncated) {
-    const hydratedTopLevel = await hydrate(entity.id_str)
-
-    entity = Object.assign(entity, hydratedTopLevel)
-  }
-
-  // TODO Hydrate backstory
-
-  return entity
-}
-
-class Consumer {
+class Deck {
   constructor(storage, serviceConfigs) {
-    debug(`creating new instance of Consumer`)
+    debug(`creating new instance of Deck`)
 
     this.serviceConfigs = serviceConfigs
 
@@ -43,7 +15,6 @@ class Consumer {
   }
 
   async start(service) {
-
     const startService = (serviceConfig) => {
       debug(`starting ${serviceConfig.name} service`)
 
@@ -99,9 +70,9 @@ class Consumer {
           debug(`latest id for ${name} for scope ${scope}: ${serviceConfig.latestId}`)
 
           entities = entities.map((entity) => {
-            debug(`transforming ${entity.id} for ${name} for scope ${scope}`)
+            debug(`parsing ${entity.id} for ${name} for scope ${scope}`)
 
-            return transformer(entity, name)
+            return parse(entity, name)
           })
 
           debug(`writing ${entities.length} entities for ${name} for scope ${scope}`)
@@ -146,6 +117,6 @@ class Consumer {
 }
 
 module.exports = {
-  Consumer,
+  Deck,
   Storage,
 }
