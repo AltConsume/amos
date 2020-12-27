@@ -56,22 +56,22 @@ class FsStorage {
     return Promise.allSettled(promises)
   }
 
-  async feed(ref, skip) {
+  async ls(ref) {
     const dirPath = `${this.dir}/${ref}`
 
-    let files = await promisify(fs.readdir)(dirPath)
+    return promisify(fs.readdir)(dirPath)
+  }
 
-    files = files.slice(0, 100)
+  async feed(ref, identifiers) {
+    const promises = identifiers.map(async (identifier) => {
+      const path = resolve(this.dir, ref, identifier)
 
-    const entities = []
-    for(let i = 0; i < files.length; i++) {
-      const filePath = files[i]
-      const fileContents = await promisify(fs.readFile)(`${dirPath}/${filePath}`)
+      const entityBuffer = await promisify(fs.readFile)(path)
 
-      entities.push(JSON.parse(fileContents.toString()))
-    }
+      return JSON.parse(entityBuffer.toString())
+    })
 
-    return entities
+    return Promise.all(promises)
   }
 }
 
