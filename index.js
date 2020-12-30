@@ -1,28 +1,53 @@
 const { promisify } = require(`util`)
 const { resolve } = require(`path`)
+const debug = require(`debug`)(`amos:index`)
 const fs = require(`fs`)
 
 const {
-  Deck,
+  Amos,
   Storage,
 } = require(`../src`)
 
 ;(async () => {
+  let amos
+
   const configPath = resolve(__dirname, `config.json`)
 
-  let config = await promisify(fs.readFile)(configPath)
-  config = JSON.parse(config.toString())
+  debug(`using ${configPath} as config`)
 
-  const {
-    serviceConfigs,
-    storage,
-  } = config
+  try {
+    let config = await promisify(fs.readFile)(configPath)
+    config = JSON.parse(config.toString())
 
-  // TODO Allow for config to adjust what storage used
-  const storage = new Storage.FS(storage.path)
+    debug(`read config.json`)
 
-  const consumer = new Deck(storage, serviceConfigs)
+    const {
+      serviceConfigs,
+      storage,
+    } = config
 
-  consumer.start()
+    debug(`instantiating fs storage at ${storage.path}`)
+
+    // TODO Allow for config to adjust what storage used
+    const storage = new Storage.FS(storage.path)
+
+    amos = new Amos(storage, serviceConfigs)
+
+    debug(`starting all amos polls`)
+
+    amos.start()
+  } catch (error) {
+    console.error(`Error occurred: `, error)
+
+    return process.exit(1)
+  }
+
+  process.on(`SIGINT`, () => {
+    debug(`trying a clean exit of amos`)
+
+    amos.stop()
+
+    process.exit(0)
+  })
 })()
 

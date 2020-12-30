@@ -21,14 +21,14 @@ npm install
       "name": "twitter",
       "url": "https://my-url.com",
       "pullSeconds": 10,
-      "authentication": <base64 string of `${accessToken}:${accessTokenSecret}`
+      "authentication": "<base64 string of `${accessToken}:${accessTokenSecret}`"
     },
     {
       "name": "youtube",
       "scope": "likes",
       "url": "https://my-url.com",
       "pullSeconds": 10,
-      "authentication": <base64 string of `${accessToken}:${refreshToken}`
+      "authentication": "<base64 string of `${accessToken}:${refreshToken}`"
     }
   ],
   "storage": {

@@ -2,19 +2,23 @@ const { createServer } = require(`./server`)
 const { parse } = require(`@takeamos/models`)
 const Storage = require(`./storage`)
 const fetch = require(`node-fetch`)
-const debug = require(`debug`)(`amos:deck`)
+const debug = require(`debug`)(`amos:src:index`)
 
-class Deck {
+const $findServiceConfig = Symbol(`findServiceConfig`)
+
+class Amos {
   constructor(storage, serviceConfigs) {
-    debug(`creating new instance of Deck`)
+    debug(`creating new instance of Amos`)
 
     this.serviceConfigs = serviceConfigs
 
     this.storage = storage
+
+    // Server for feeds and recommendations
     this.server = createServer(storage)
   }
 
-  async start(service) {
+  start(service) {
     const startService = (serviceConfig) => {
       debug(`starting ${serviceConfig.name} service`)
 
@@ -30,8 +34,22 @@ class Deck {
             authentication,
             name,
             scope,
-            latestId,
           } = serviceConfig
+
+          let {
+            latestId
+          } = serviceConfig
+
+          if (latestId === undefined) {
+            // Load from meta file
+            const meta = await this.storage.read(name, `meta`)
+
+            if (meta) {
+              const latestIdEntry = meta.values.find(({ key }) => key === `latestId`)
+
+              latestId = latestIdEntry.value
+            }
+          }
 
           debug(`fetching ${name} data for scope ${scope}`)
           const pulledRes = await fetch(`${url}/api/pull?latestId=${latestId}&scope=${scope}`, {
@@ -44,7 +62,7 @@ class Deck {
             try {
               const error = await pulledRes.text()
 
-              console.error(`Failed to fetch ${name} data for scope ${scope}: ${error || `no error found`}`)
+              console.error(`Failed to fetch ${name} data for scope ${scope}: ${error}`)
 
               return
             } catch (error) {
@@ -64,8 +82,22 @@ class Deck {
             return
           }
 
-          // TODO Write to meta file
           serviceConfig.latestId = entities[0].id
+
+          // Save latestId to a meta file for this service
+          const serviceMeta = {
+            about: {
+              identifier: `meta`,
+            },
+            values: [
+              {
+                key: `latestId`,
+                value: serviceConfig.latestId,
+              },
+            ],
+          }
+
+          await this.storage.write(name, serviceMeta, fsConfig)
 
           debug(`latest id for ${name} for scope ${scope}: ${serviceConfig.latestId}`)
 
@@ -77,6 +109,7 @@ class Deck {
 
           debug(`writing ${entities.length} entities for ${name} for scope ${scope}`)
 
+          // Store scopes in different folders
           let _name = scope ? `${name}/${scope}` : name
 
           await this.storage.write(_name, entities, fsConfig)
@@ -91,32 +124,44 @@ class Deck {
     }
 
     debug(`trying to start ${service} service`)
+    const serviceConfig = this[$findServiceConfig](service)
 
-    const serviceConfig = this.serviceConfigs.find(({ name }) => name === service)
-
-    if (!serviceConfig) {
-      throw new Error(`Could not find ${service} as a configured service.`)
-    }
-
-    debug(`found service config for ${name}`)
-    return startService(config)
+    return startService(serviceConfig)
   }
 
   stop(service) {
     debug(`stopping ${server || `all services`}`)
 
-    if (!service) {
-      // TODO Stop all
+    const stopService = (serviceConfig) => {
+      const poll = serviceConfig.loop
+
+      clearInterval(poll)
     }
 
-    const serviceConfig = this.serviceConfigs[service]
+    if (!service) {
+      return this.serviceConfigs.map(stopService)
+    }
 
-    clearInterval(serviceConfig.loop)
-    serviceConfig.loop = null
+    debug(`trying to stop ${service} service`)
+    const serviceConfig = this[$findServiceConfig](service)
+
+    return stopService(serviceConfig)
+  }
+
+  [$findServiceConfig](serviceName) {
+    const serviceConfig = this.serviceConfigs.find(({ name }) => name === serviceName)
+
+    if (!serviceConfig) {
+      throw new Error(`Could not find ${serviceName} as a configured service.`)
+    }
+
+    debug(`found service config for ${serviceName}`)
+
+    return serviceConfig
   }
 }
 
 module.exports = {
-  Deck,
+  Amos,
   Storage,
 }
