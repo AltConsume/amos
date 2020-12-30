@@ -41,19 +41,19 @@ const createServer = (storage) => {
     try {
       debug(`looking up recommended feed for ${service}`)
 
-      const stringifiedIdentifiers = await hgetAsync(`recommendations`, service)
+      const stringIds = await hgetAsync(`recommendations`, service)
 
-      if (!stringifiedIdentifiers) {
+      if (!stringIds) {
         throw new Error(`Could not find recommended feed for ${service}`)
       }
 
-      const parsedIdentifiers = JSON.parse(stringifiedIdentifiers)
+      const parsedIds = JSON.parse(stringIds)
 
       debug(`parsed recommendations for ${service}`)
 
-      const entities = await storage.feed(service, parsedIdentifiers)
+      const entities = await storage.feed(service, parsedIds)
 
-      debug(`retrieved ${entities.length} entities vs ${parsedIdentifers.length} recommendations for ${service} feed`)
+      debug(`retrieved ${entities.length} entities vs ${parsedIds.length} recommendations for ${service} feed`)
 
       return res.json(entities)
     } catch (error) {

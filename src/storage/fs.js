@@ -43,7 +43,7 @@ class FsStorage {
 
     const baseDir = resolve(this.dir, ref)
 
-    debug(`writing ${records.length} records to ${ref} at ${baseDir}`)
+    debug(`writing ${_records.length} records to ${ref} at ${baseDir}`)
 
     try {
       await promisify(fs.mkdir)(baseDir)
@@ -51,7 +51,7 @@ class FsStorage {
       debug(`${baseDir} already exists`)
     }
 
-    const promises = records.map((record) => {
+    const promises = _records.map((record) => {
       if (!record.about || !record.about.identifier) {
         return Promise.resolve()
       }
@@ -78,7 +78,9 @@ class FsStorage {
 
     debug(`listing all files at ${dirPath}`)
 
-    return promisify(fs.readdir)(dirPath)
+    const files = await promisify(fs.readdir)(dirPath)
+
+    return files.filter((file) => file !== `meta`)
   }
 
   async feed(ref, identifiers) {

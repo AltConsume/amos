@@ -6,7 +6,7 @@ const fs = require(`fs`)
 const {
   Amos,
   Storage,
-} = require(`../src`)
+} = require(`./src`)
 
 ;(async () => {
   let amos
@@ -29,9 +29,9 @@ const {
     debug(`instantiating fs storage at ${storage.path}`)
 
     // TODO Allow for config to adjust what storage used
-    const storage = new Storage.FS(storage.path)
+    const storageInstance = new Storage.FS(storage.path)
 
-    amos = new Amos(storage, serviceConfigs)
+    amos = new Amos(storageInstance, serviceConfigs)
 
     debug(`starting all amos polls`)
 

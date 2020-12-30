@@ -42,16 +42,20 @@ class Amos {
 
           if (latestId === undefined) {
             // Load from meta file
-            const meta = await this.storage.read(name, `meta`)
+            try {
+              const meta = await this.storage.read(name, `meta`)
 
-            if (meta) {
-              const latestIdEntry = meta.values.find(({ key }) => key === `latestId`)
+              if (meta) {
+                const latestIdEntry = meta.values.find(({ key }) => key === `latestId`)
 
-              latestId = latestIdEntry.value
+                latestId = latestIdEntry.value
+              }
+            } catch (error) {
+              debug(`failed to read from meta file due: `, error)
             }
           }
 
-          debug(`fetching ${name} data for scope ${scope}`)
+          debug(`fetching ${name} data for scope ${scope} for latestId=${latestId}`)
           const pulledRes = await fetch(`${url}/api/pull?latestId=${latestId}&scope=${scope}`, {
             headers: {
               [`Authorization`]: `API ${authentication}`,
@@ -84,6 +88,21 @@ class Amos {
 
           serviceConfig.latestId = entities[0].id
 
+          debug(`latest id for ${name} for scope ${scope}: ${serviceConfig.latestId}`)
+
+          entities = entities.map((entity) => {
+            debug(`parsing ${entity.id} for ${name} for scope ${scope}`)
+
+            return parse(entity, name)
+          })
+
+          debug(`writing ${entities.length} entities for ${name} for scope ${scope}`)
+
+          // Store scopes in different folders
+          let _name = scope ? `${name}/${scope}` : name
+
+          await this.storage.write(_name, entities, fsConfig)
+
           // Save latestId to a meta file for this service
           const serviceMeta = {
             about: {
@@ -99,20 +118,6 @@ class Amos {
 
           await this.storage.write(name, serviceMeta, fsConfig)
 
-          debug(`latest id for ${name} for scope ${scope}: ${serviceConfig.latestId}`)
-
-          entities = entities.map((entity) => {
-            debug(`parsing ${entity.id} for ${name} for scope ${scope}`)
-
-            return parse(entity, name)
-          })
-
-          debug(`writing ${entities.length} entities for ${name} for scope ${scope}`)
-
-          // Store scopes in different folders
-          let _name = scope ? `${name}/${scope}` : name
-
-          await this.storage.write(_name, entities, fsConfig)
         }
       })(service, serviceConfig), serviceConfig.pullSeconds * 1000);
     }
@@ -130,7 +135,7 @@ class Amos {
   }
 
   stop(service) {
-    debug(`stopping ${server || `all services`}`)
+    debug(`stopping ${service || `all services`}`)
 
     const stopService = (serviceConfig) => {
       const poll = serviceConfig.loop
