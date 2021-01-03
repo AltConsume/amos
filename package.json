@@ -10,6 +10,7 @@
   "author": "Madeline <maddie@qnzl.co>",
   "license": "MIT",
   "dependencies": {
+    "@takeamos/storage-fs": "^1.0.0",
     "async-iterator-to-stream": "^1.2.0",
     "debug": "^4.3.1",
     "express": "^4.17.1",

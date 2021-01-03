@@ -1,11 +1,11 @@
 const { promisify } = require(`util`)
 const { resolve } = require(`path`)
+const FSStorage = require(`@takeamos/storage-fs`)
 const debug = require(`debug`)(`amos:index`)
 const fs = require(`fs`)
 
 const {
   Amos,
-  Storage,
 } = require(`./src`)
 
 ;(async () => {
@@ -29,7 +29,7 @@ const {
     debug(`instantiating fs storage at ${storage.path}`)
 
     // TODO Allow for config to adjust what storage used
-    const storageInstance = new Storage.FS(storage.path)
+    const storageInstance = new FSStorage(storage.path)
 
     amos = new Amos(storageInstance, serviceConfigs)
 
