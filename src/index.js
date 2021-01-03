@@ -90,12 +90,6 @@ class Amos {
 
           debug(`latest id for ${name} for scope ${scope}: ${serviceConfig.latestId}`)
 
-          entities = entities.map((entity) => {
-            debug(`parsing ${entity.id} for ${name} for scope ${scope}`)
-
-            return parse(entity, name)
-          })
-
           debug(`writing ${entities.length} entities for ${name} for scope ${scope}`)
 
           // Store scopes in different folders
